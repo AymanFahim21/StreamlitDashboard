@@ -38,8 +38,15 @@ your GitHub repository and point your Streamlit deployment to this file.
 import altair as alt
 import numpy as np
 import pandas as pd
-import plotly.express as px
 import streamlit as st
+
+# Try to import Plotly; fall back gracefully if it's missing
+try:
+    import plotly.express as px
+    PLOTLY_AVAILABLE = True
+except Exception:
+    PLOTLY_AVAILABLE = False
+
 
 
 # -----------------------------------------------------------------------------
@@ -366,25 +373,45 @@ def main() -> None:
     # Column 2: Choropleth and heatmap
     with col[1]:
         st.markdown("#### Total Complaints by State")
-        # Choropleth map using Plotly
-        fig = px.choropleth(
-            df_selected_year,
-            locations="state_code",
-            color="complaints",
-            locationmode="USA-states",
-            color_continuous_scale=selected_theme,
-            range_color=(0, df_selected_year["complaints"].max()),
-            scope="usa",
-            labels={"complaints": "Complaints"},
+        # Choropleth (Plotly if available; otherwise a bar chart fallback)
+if PLOTLY_AVAILABLE:
+    fig = px.choropleth(
+        df_selected_year,
+        locations="state_code",
+        color="complaints",
+        locationmode="USA-states",
+        color_continuous_scale=selected_theme,
+        range_color=(0, df_selected_year["complaints"].max()),
+        scope="usa",
+        labels={"complaints": "Complaints"},
+    )
+    fig.update_layout(
+        template="plotly_dark",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=0, r=0, t=0, b=0),
+        height=350,
+    )
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.warning(
+        "Plotly isn't installed, so the choropleth map is disabled. "
+        "Add `plotly` to `requirements.txt` to enable it on Streamlit Cloud."
+    )
+    # Simple fallback: top N states bar chart for the selected year
+    topn = df_selected_year_sorted.head(15)
+    bar = (
+        alt.Chart(topn)
+        .mark_bar()
+        .encode(
+            x=alt.X("complaints:Q", title="Complaints"),
+            y=alt.Y("state:N", sort="-x", title="State"),
+            tooltip=["state", "complaints"]
         )
-        fig.update_layout(
-            template="plotly_dark",
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=0, r=0, t=0, b=0),
-            height=350,
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        .properties(height=350)
+    )
+    st.altair_chart(bar, use_container_width=True)
+
 
         # Heatmap showing complaints over years and states
         heatmap = (
