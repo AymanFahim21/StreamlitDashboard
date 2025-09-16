@@ -1,5 +1,5 @@
 """
-MovieLens 200k Ratings Dashboard
+Movie Ratings Dashboard
 --------------------------------
 
 This Streamlit application provides an interactive dashboard to explore the MovieLens
